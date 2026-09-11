@@ -12,6 +12,9 @@ const RegisterPage = React.lazy(() =>
     default: m.RegisterPage,
   })),
 );
+const ChatPage = React.lazy(() =>
+  import("@/pages/chat/chat-page").then((m) => ({ default: m.ChatPage })),
+);
 
 function RouteFallback() {
   return (
@@ -55,16 +58,22 @@ function App() {
             }
           />
           <Route
-            path="/"
+            path="/chat"
             element={
               <RequireAuth>
-                {/* placeholder -- chat shell nyusul di tahap berikutnya */}
-                <div className="flex min-h-svh items-center justify-center text-sm text-muted-foreground">
-                  Chat shell nyusul 🚧
-                </div>
+                <ChatPage />
               </RequireAuth>
             }
           />
+          <Route
+            path="/chat/:id"
+            element={
+              <RequireAuth>
+                <ChatPage />
+              </RequireAuth>
+            }
+          />
+          <Route path="/" element={<Navigate to="/chat" replace />} />
         </Routes>
       </React.Suspense>
     </BrowserRouter>

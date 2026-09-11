@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, Mail } from "lucide-react";
 
 import { AuthLayout } from "@/pages/auth/auth-layout";
 import { Button } from "@/components/ui/button";
@@ -33,8 +33,8 @@ function LoginPage() {
 
   return (
     <AuthLayout
-      title="Masuk ke AISAN"
-      subtitle="Lanjut ngobrol sama asisten kamu."
+      title="Login to AISAN"
+      subtitle="Lanjut chat sama AI assistant kamu."
       footer={
         <>
           Belum punya akun?{" "}
@@ -42,7 +42,7 @@ function LoginPage() {
             to="/register"
             className="font-medium text-primary hover:underline"
           >
-            Daftar
+            Register
           </Link>
         </>
       }
@@ -50,15 +50,16 @@ function LoginPage() {
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
-        className="flex flex-col gap-4"
+        className="flex flex-col gap-5"
       >
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="email">Email</Label>
           <Input
             id="email"
             type="email"
+            icon={Mail}
             autoComplete="email"
-            placeholder="kamu@contoh.com"
+            placeholder="you@example.com"
             aria-invalid={!!errors.email}
             {...register("email")}
           />
@@ -79,17 +80,23 @@ function LoginPage() {
 
         {login.isError && (
           <p role="alert" className="text-sm text-destructive">
-            {extractApiErrorMessage(login.error, "Gagal masuk, coba lagi.")}
+            {extractApiErrorMessage(login.error, "Login gagal, coba lagi.")}
           </p>
         )}
 
         <Button
           type="submit"
-          className="mt-1 w-full"
+          className="group/button mt-1 w-fit"
           disabled={login.isPending}
         >
-          {login.isPending && <Loader2 className="size-4 animate-spin" />}
-          Masuk
+          {login.isPending ? (
+            <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <>
+              Login
+              <ArrowRight className="size-4 transition-transform group-hover/button:translate-x-0.5" />
+            </>
+          )}
         </Button>
       </form>
     </AuthLayout>

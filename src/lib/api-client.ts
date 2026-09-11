@@ -19,18 +19,37 @@ apiClient.interceptors.request.use((config) => {
   return config;
 });
 
-let isRefreshing = false;
-let pendingQueue: Array<{
-  resolve: (token: string) => void;
-  reject: (err: unknown) => void;
-}> = [];
+let refreshPromise: Promise<string> | null = null;
 
-function flushQueue(error: unknown, token: string | null) {
-  pendingQueue.forEach(({ resolve, reject }) => {
-    if (token) resolve(token);
-    else reject(error);
-  });
-  pendingQueue = [];
+// Satu-satunya tempat yang boleh manggil POST /auth/refresh -- dipake BARENG
+// sama axios interceptor di bawah DAN useChatStream (yang manggil fetch()
+// manual buat SSE, jadi gak lewat axios interceptor sama sekali). Di-share
+// lewat `refreshPromise` biar single-flight: kalau dua request kena 401
+// bareng, cuma 1 kali call /auth/refresh yang beneran jalan.
+export async function refreshAccessToken(): Promise<string> {
+  if (refreshPromise) return refreshPromise;
+
+  const { refreshToken, setTokens, clearSession } = getAuthState();
+  if (!refreshToken) {
+    clearSession();
+    throw new Error("No refresh token available");
+  }
+
+  refreshPromise = refreshClient
+    .post<RefreshResponse>("/auth/refresh", { refresh_token: refreshToken })
+    .then(({ data }) => {
+      setTokens(data.access_token, data.refresh_token);
+      return data.access_token;
+    })
+    .catch((err) => {
+      clearSession();
+      throw err;
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+
+  return refreshPromise;
 }
 
 apiClient.interceptors.response.use(
@@ -47,50 +66,14 @@ apiClient.interceptors.response.use(
     ) {
       return Promise.reject(error);
     }
-
-    const { refreshToken, setTokens, clearSession } = getAuthState();
-    if (!refreshToken) {
-      clearSession();
-      return Promise.reject(error);
-    }
-
-    if (isRefreshing) {
-      // udah ada refresh yang jalan -- antri, jangan nembak /auth/refresh lagi.
-      return new Promise((resolve, reject) => {
-        pendingQueue.push({
-          resolve: (token) => {
-            originalRequest._retry = true;
-            originalRequest.headers.set("Authorization", `Bearer ${token}`);
-            resolve(apiClient(originalRequest));
-          },
-          reject,
-        });
-      });
-    }
-
     originalRequest._retry = true;
-    isRefreshing = true;
 
     try {
-      const { data } = await refreshClient.post<RefreshResponse>(
-        "/auth/refresh",
-        {
-          refresh_token: refreshToken,
-        },
-      );
-      setTokens(data.access_token, data.refresh_token);
-      flushQueue(null, data.access_token);
-      originalRequest.headers.set(
-        "Authorization",
-        `Bearer ${data.access_token}`,
-      );
+      const newAccessToken = await refreshAccessToken();
+      originalRequest.headers.set("Authorization", `Bearer ${newAccessToken}`);
       return apiClient(originalRequest);
     } catch (refreshError) {
-      flushQueue(refreshError, null);
-      clearSession();
       return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
     }
   },
 );

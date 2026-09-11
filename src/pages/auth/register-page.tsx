@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Link, useNavigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, Mail, User } from "lucide-react";
 
 import { AuthLayout } from "@/pages/auth/auth-layout";
 import { Button } from "@/components/ui/button";
@@ -33,8 +33,8 @@ function RegisterPage() {
 
   return (
     <AuthLayout
-      title="Buat akun AISAN"
-      subtitle="Beres 1 menit, langsung bisa mulai ngobrol."
+      title="Register to AISAN"
+      subtitle="Beres 1 menit, langsung bisa mulai chat."
       footer={
         <>
           Udah punya akun?{" "}
@@ -42,7 +42,7 @@ function RegisterPage() {
             to="/login"
             className="font-medium text-primary hover:underline"
           >
-            Masuk
+            Login
           </Link>
         </>
       }
@@ -50,12 +50,13 @@ function RegisterPage() {
       <form
         onSubmit={handleSubmit(onSubmit)}
         noValidate
-        className="flex flex-col gap-4"
+        className="flex flex-col gap-5"
       >
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="name">Nama</Label>
+          <Label htmlFor="name">Name</Label>
           <Input
             id="name"
+            icon={User}
             autoComplete="name"
             placeholder="Nama kamu"
             aria-invalid={!!errors.name}
@@ -69,8 +70,9 @@ function RegisterPage() {
           <Input
             id="email"
             type="email"
+            icon={Mail}
             autoComplete="email"
-            placeholder="kamu@contoh.com"
+            placeholder="you@example.com"
             aria-invalid={!!errors.email}
             {...register("email")}
           />
@@ -90,7 +92,7 @@ function RegisterPage() {
         </div>
 
         <div className="flex flex-col gap-1.5">
-          <Label htmlFor="confirmPassword">Konfirmasi password</Label>
+          <Label htmlFor="confirmPassword">Confirm password</Label>
           <PasswordInput
             id="confirmPassword"
             autoComplete="new-password"
@@ -105,20 +107,24 @@ function RegisterPage() {
           <p role="alert" className="text-sm text-destructive">
             {extractApiErrorMessage(
               registerUser.error,
-              "Gagal daftar, coba lagi.",
+              "Register gagal, coba lagi.",
             )}
           </p>
         )}
 
         <Button
           type="submit"
-          className="mt-1 w-full"
+          className="group/button mt-1 w-fit"
           disabled={registerUser.isPending}
         >
-          {registerUser.isPending && (
+          {registerUser.isPending ? (
             <Loader2 className="size-4 animate-spin" />
+          ) : (
+            <>
+              Register
+              <ArrowRight className="size-4 transition-transform group-hover/button:translate-x-0.5" />
+            </>
           )}
-          Daftar
         </Button>
       </form>
     </AuthLayout>
