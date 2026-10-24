@@ -16,23 +16,23 @@ export interface User {
 export interface TokenPair {
   access_token: string;
   refresh_token: string;
+  expires_at: string;
 }
 
+// BE bungkus token di dalam field `tokens` (lihat handler/auth_handler.go).
 export interface LoginResponse {
   user: User;
-  access_token: string;
-  refresh_token: string;
+  tokens: TokenPair;
 }
 
+// Register gak ngasih token -- user harus login dulu abis daftar.
 export interface RegisterResponse {
+  message: string;
   user: User;
-  access_token: string;
-  refresh_token: string;
 }
 
 export interface RefreshResponse {
-  access_token: string;
-  refresh_token: string;
+  tokens: TokenPair;
 }
 
 export interface ApiErrorBody {
@@ -85,4 +85,38 @@ export interface GetConversationResponse {
   messages: Message[];
   has_more: boolean;
   next_cursor: number | null;
+}
+
+// GET /conversations -- pagination offset, BE gak ngirim `has_more`.
+export interface ListConversationsResponse {
+  conversations: Conversation[];
+  limit: number;
+  offset: number;
+}
+
+// Bentuk ringkas yang dipake sidebar. Sengaja cuma 3 field (bukan
+// Conversation penuh) biar cache list-nya kecil di memori.
+export interface ConversationSummary {
+  id: number;
+  title: string;
+  updated_at: string;
+}
+
+// GET /models -- semua model terdaftar di DB (termasuk yang non-aktif).
+// `id` inilah yang dikirim sebagai `model_id` di POST /chat.
+export interface AIModel {
+  id: number;
+  provider: string;
+  name: string;
+  context_window?: number;
+  max_output_tokens?: number;
+  supports_tools: boolean;
+  supports_vision: boolean;
+  supports_reasoning: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface ListModelsResponse {
+  models: AIModel[];
 }

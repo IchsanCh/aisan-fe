@@ -24,14 +24,20 @@ function RouteFallback() {
   );
 }
 
+// Flag `isAuthenticated` doang gak cukup: session lama di localStorage bisa
+// punya flag true tapi token-nya kosong. Jadi token juga harus ada.
+function useHasSession() {
+  return useAuthStore((s) => s.isAuthenticated && !!s.accessToken);
+}
+
 function RequireAuth({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isAuthenticated = useHasSession();
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }
 
 function RedirectIfAuthed({ children }: { children: React.ReactNode }) {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const isAuthenticated = useHasSession();
   if (isAuthenticated) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
@@ -57,16 +63,11 @@ function App() {
               </RedirectIfAuthed>
             }
           />
+          {/* Satu route buat /chat dan /chat/:id: ChatPage gak ke-remount
+              pas URL berubah (mis. /chat -> /chat/12 abis chat baru dibikin),
+              jadi stream yang lagi jalan tetap nyambung ke tombol stop. */}
           <Route
-            path="/chat"
-            element={
-              <RequireAuth>
-                <ChatPage />
-              </RequireAuth>
-            }
-          />
-          <Route
-            path="/chat/:id"
+            path="/chat/:id?"
             element={
               <RequireAuth>
                 <ChatPage />

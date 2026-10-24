@@ -36,12 +36,16 @@ function mapServerMessage(m: Message): ChatMessageItem | null {
 
 interface ChatState {
   conversationId: number | null;
+  // Model yang nempel di conversation yang lagi kebuka. null = belum ada
+  // (chat baru) -> picker jatuh ke model terakhir dipilih / default BE.
+  modelId: number | null;
   messages: ChatMessageItem[];
   hasMoreOlder: boolean;
   oldestCursor: number | null;
   isStreaming: boolean;
 
   setConversationId: (id: number | null) => void;
+  setModelId: (id: number | null) => void;
   hydrateLatest: (
     messages: Message[],
     hasMore: boolean,
@@ -63,12 +67,14 @@ interface ChatState {
 
 export const useChatStore = create<ChatState>()((set) => ({
   conversationId: null,
+  modelId: null,
   messages: [],
   hasMoreOlder: false,
   oldestCursor: null,
   isStreaming: false,
 
   setConversationId: (id) => set({ conversationId: id }),
+  setModelId: (id) => set({ modelId: id }),
 
   hydrateLatest: (messages, hasMore, cursor) =>
     set({
@@ -94,16 +100,32 @@ export const useChatStore = create<ChatState>()((set) => ({
   pushMessage: (message) =>
     set((state) => ({ messages: [...state.messages, message] })),
 
+  // Yang di-update hampir selalu pesan paling akhir (bubble yang lagi
+  // streaming), jadi cari dari belakang dan jangan map seluruh array.
+  // Kalau id-nya gak ketemu (mis. store udah di-reset), state dibalikin
+  // apa adanya supaya gak ada re-render sia-sia.
   updateMessage: (id, updater) =>
-    set((state) => ({
-      messages: state.messages.map((m) => (m.id === id ? updater(m) : m)),
-    })),
+    set((state) => {
+      const list = state.messages;
+      let idx = -1;
+      for (let i = list.length - 1; i >= 0; i--) {
+        if (list[i].id === id) {
+          idx = i;
+          break;
+        }
+      }
+      if (idx === -1) return state;
+      const next = list.slice();
+      next[idx] = updater(list[idx]);
+      return { messages: next };
+    }),
 
   setStreaming: (value) => set({ isStreaming: value }),
 
   reset: () =>
     set({
       conversationId: null,
+      modelId: null,
       messages: [],
       hasMoreOlder: false,
       oldestCursor: null,

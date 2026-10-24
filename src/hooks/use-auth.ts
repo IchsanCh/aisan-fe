@@ -29,14 +29,18 @@ export function useLogin() {
       return data;
     },
     onSuccess: (data) => {
-      setSession(data.user, data.access_token, data.refresh_token);
+      setSession(
+        data.user,
+        data.tokens.access_token,
+        data.tokens.refresh_token,
+      );
     },
   });
 }
 
+// Register sengaja gak nyimpen session: BE gak ngirim token di endpoint ini,
+// jadi abis sukses user diarahin ke halaman login.
 export function useRegister() {
-  const setSession = useAuthStore((s) => s.setSession);
-
   return useMutation({
     mutationFn: async (values: RegisterFormValues) => {
       const { data } = await apiClient.post<RegisterResponse>(
@@ -48,9 +52,6 @@ export function useRegister() {
         },
       );
       return data;
-    },
-    onSuccess: (data) => {
-      setSession(data.user, data.access_token, data.refresh_token);
     },
   });
 }

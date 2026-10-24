@@ -1,5 +1,11 @@
 import * as React from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  addConversationToTop,
+  touchConversation,
+} from "@/lib/conversation-cache";
 import { refreshAccessToken } from "@/lib/api-client";
+import { modelsKey } from "@/lib/models";
 import { useAuthStore } from "@/store/auth-store";
 import { useChatStore, type ChatMessageItem } from "@/store/chat-store";
 import { parseSSEStream } from "@/lib/sse";
@@ -9,8 +15,24 @@ const baseURL =
 
 let toolCallSeq = 0;
 
+const TITLE_MAX = 50;
+
+// BE nerima `title` pas bikin conversation baru; tanpa ini semuanya jadi
+// "New Conversation" dan sidebar isinya judul kembar.
+function deriveTitle(message: string) {
+  const oneLine = message.replace(/\s+/g, " ").trim();
+  return oneLine.length > TITLE_MAX
+    ? `${oneLine.slice(0, TITLE_MAX).trimEnd()}…`
+    : oneLine;
+}
+
 async function postChat(
-  body: { conversation_id: number | null; message: string },
+  body: {
+    conversation_id: number | null;
+    message: string;
+    title?: string;
+    model_id?: number;
+  },
   accessToken: string | null,
   signal: AbortSignal,
 ) {
@@ -26,8 +48,10 @@ async function postChat(
 }
 
 export function useChatStream() {
+  const queryClient = useQueryClient();
   const conversationId = useChatStore((s) => s.conversationId);
   const setConversationId = useChatStore((s) => s.setConversationId);
+  const setModelId = useChatStore((s) => s.setModelId);
   const pushMessage = useChatStore((s) => s.pushMessage);
   const updateMessage = useChatStore((s) => s.updateMessage);
   const setStreaming = useChatStore((s) => s.setStreaming);
@@ -36,7 +60,7 @@ export function useChatStream() {
   const abortRef = React.useRef<AbortController | null>(null);
 
   const sendMessage = React.useCallback(
-    async (text: string) => {
+    async (text: string, modelId?: number | null) => {
       const trimmed = text.trim();
       if (!trimmed) return;
 
@@ -66,7 +90,16 @@ export function useChatStream() {
       abortRef.current = controller;
 
       try {
-        const payload = { conversation_id: conversationId, message: trimmed };
+        const title = conversationId ? undefined : deriveTitle(trimmed);
+        const payload = {
+          conversation_id: conversationId,
+          message: trimmed,
+          title,
+          // BE otomatis nge-update model conversation kalau beda; kalau
+          // gak ada (list model belum ke-load) BE pake model default.
+          model_id: modelId ?? undefined,
+        };
+        let activeConversationId = conversationId;
         let accessToken = useAuthStore.getState().accessToken;
         let res = await postChat(payload, accessToken, controller.signal);
 
@@ -88,7 +121,17 @@ export function useChatStream() {
               const parsed = JSON.parse(evt.data) as {
                 conversation_id: number;
               };
-              if (!conversationId) setConversationId(parsed.conversation_id);
+              activeConversationId = parsed.conversation_id;
+              if (!conversationId) {
+                setConversationId(parsed.conversation_id);
+                // Conversation baru nempel ke model yang barusan dipakai.
+                if (modelId != null) setModelId(modelId);
+                addConversationToTop(queryClient, {
+                  id: parsed.conversation_id,
+                  title: title ?? "New Conversation",
+                  updated_at: new Date().toISOString(),
+                });
+              }
               break;
             }
             case "message": {
@@ -136,12 +179,21 @@ export function useChatStream() {
                   status: "done",
                 })),
               }));
+              // Ada aktivitas baru -> naikin ke paling atas sidebar.
+              if (activeConversationId) {
+                touchConversation(queryClient, activeConversationId);
+              }
               break;
             }
           }
         }
       } catch (err) {
         if ((err as Error).name !== "AbortError") {
+          // Bisa jadi model yang dikirim barusan dinonaktifin di server:
+          // tandai daftar model stale biar kebaca fresh di request berikutnya.
+          if (modelId != null) {
+            void queryClient.invalidateQueries({ queryKey: modelsKey });
+          }
           setError(
             (err as Error).message ||
               "Sesi kamu abis atau gagal connect, coba login lagi.",
@@ -155,8 +207,10 @@ export function useChatStream() {
     },
     [
       conversationId,
+      queryClient,
       pushMessage,
       setConversationId,
+      setModelId,
       setStreaming,
       updateMessage,
     ],

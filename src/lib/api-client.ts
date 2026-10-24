@@ -38,8 +38,8 @@ export async function refreshAccessToken(): Promise<string> {
   refreshPromise = refreshClient
     .post<RefreshResponse>("/auth/refresh", { refresh_token: refreshToken })
     .then(({ data }) => {
-      setTokens(data.access_token, data.refresh_token);
-      return data.access_token;
+      setTokens(data.tokens.access_token, data.tokens.refresh_token);
+      return data.tokens.access_token;
     })
     .catch((err) => {
       clearSession();

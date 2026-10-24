@@ -27,7 +27,7 @@ function RegisterPage() {
 
   const onSubmit = (values: RegisterFormValues) => {
     registerUser.mutate(values, {
-      onSuccess: () => navigate("/", { replace: true }),
+      onSuccess: () => navigate("/login", { replace: true }),
     });
   };
 
