@@ -120,3 +120,8 @@ export interface AIModel {
 export interface ListModelsResponse {
   models: AIModel[];
 }
+
+// PATCH /conversations/:id (rename) -- body: { title }
+export interface UpdateConversationResponse {
+  conversation: Conversation;
+}

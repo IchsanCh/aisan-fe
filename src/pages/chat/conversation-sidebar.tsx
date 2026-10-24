@@ -1,13 +1,15 @@
 import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Loader2, PanelLeftClose, Plus, Trash2, X } from "lucide-react";
+import { Loader2, PanelLeftClose, Pencil, Plus, Trash2, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
   useConversationList,
   useDeleteConversation,
+  useRenameConversation,
 } from "@/hooks/use-conversation-list";
+import { CONVERSATION_TITLE_MAX } from "@/lib/conversations";
 import { cn } from "@/lib/utils";
 import { useChatStore } from "@/store/chat-store";
 import type { ConversationSummary } from "@/types/api";
@@ -59,17 +61,123 @@ function buildRows(items: ConversationSummary[]): Row[] {
   return rows;
 }
 
+interface RenameFieldProps {
+  initial: string;
+  saving: boolean;
+  failed: boolean;
+  onSubmit: (title: string) => void;
+  onCancel: () => void;
+}
+
+// Input rename di dalam baris. Enter = simpan, Esc = batal, blur = simpan
+// (kalau valid & berubah). Kosong / gak berubah -> batal tanpa request.
+function RenameField({
+  initial,
+  saving,
+  failed,
+  onSubmit,
+  onCancel,
+}: RenameFieldProps) {
+  const [draft, setDraft] = React.useState(initial);
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  // Dipake biar blur yang kepicu abis Enter/Esc (atau pas input di-unmount)
+  // gak nge-submit / nge-cancel dua kali.
+  const settledRef = React.useRef(false);
+
+  React.useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  // Request gagal: input tetap kebuka, jadi boleh coba simpan lagi.
+  React.useEffect(() => {
+    if (failed) settledRef.current = false;
+  }, [failed]);
+
+  const commit = () => {
+    const next = draft.trim();
+    if (!next || next === initial.trim()) {
+      settledRef.current = true;
+      onCancel();
+      return;
+    }
+    settledRef.current = true;
+    onSubmit(next);
+  };
+
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-1 pl-2">
+      <input
+        ref={inputRef}
+        type="text"
+        value={draft}
+        maxLength={CONVERSATION_TITLE_MAX}
+        readOnly={saving}
+        aria-label="Chat title"
+        aria-busy={saving || undefined}
+        aria-invalid={failed || undefined}
+        title={failed ? "Couldn't rename. Try again." : undefined}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            if (!saving) commit();
+          } else if (e.key === "Escape") {
+            // Jangan ikut nutup drawer mobile (listener Escape di window).
+            e.stopPropagation();
+            settledRef.current = true;
+            onCancel();
+          }
+        }}
+        onBlur={() => {
+          if (settledRef.current || saving) return;
+          if (failed) {
+            settledRef.current = true;
+            onCancel();
+            return;
+          }
+          commit();
+        }}
+        className="h-8 min-w-0 flex-1 rounded-md border border-input bg-background px-2 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring aria-invalid:border-destructive aria-invalid:ring-destructive/30"
+      />
+      {saving && (
+        <Loader2
+          className="size-4 shrink-0 animate-spin text-muted-foreground"
+          aria-label="Saving"
+        />
+      )}
+      {failed && (
+        <span role="alert" className="sr-only">
+          Couldn&apos;t rename. Try again.
+        </span>
+      )}
+    </div>
+  );
+}
+
 interface ConversationRowProps {
   conv: ConversationSummary;
   active: boolean;
   confirming: boolean;
   deleting: boolean;
   failed: boolean;
+  editing: boolean;
+  renaming: boolean;
+  renameFailed: boolean;
   onSelect: (id: number, e: React.MouseEvent) => void;
   onAskDelete: (id: number) => void;
   onCancelDelete: () => void;
   onConfirmDelete: (id: number) => void;
+  onAskRename: (id: number) => void;
+  onSubmitRename: (id: number, title: string) => void;
+  onCancelRename: () => void;
 }
+
+// Tombol aksi di baris (rename / delete): di desktop muncul pas hover atau
+// fokus (selalu keliatan di baris aktif); di layar sentuh gak ada hover,
+// jadi di bawah md selalu keliatan.
+const rowActionClass =
+  "text-muted-foreground focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100 max-md:opacity-100";
 
 const ConversationRow = React.memo(function ConversationRow({
   conv,
@@ -77,11 +185,34 @@ const ConversationRow = React.memo(function ConversationRow({
   confirming,
   deleting,
   failed,
+  editing,
+  renaming,
+  renameFailed,
   onSelect,
   onAskDelete,
   onCancelDelete,
   onConfirmDelete,
+  onAskRename,
+  onSubmitRename,
+  onCancelRename,
 }: ConversationRowProps) {
+  const label = conv.title || "Untitled chat";
+  const linkRef = React.useRef<HTMLAnchorElement>(null);
+
+  // Abis edit selesai input-nya hilang dan fokus jatuh ke body. Balikin ke
+  // link baris ini -- tapi cuma kalau fokus emang "kosong"; kalau user
+  // udah klik ke tempat lain (blur), jangan direbut.
+  const wasEditingRef = React.useRef(false);
+  React.useEffect(() => {
+    if (wasEditingRef.current && !editing) {
+      const el = document.activeElement;
+      if (!el || el === document.body) {
+        linkRef.current?.focus({ preventScroll: true });
+      }
+    }
+    wasEditingRef.current = editing;
+  }, [editing]);
+
   return (
     <div
       className={cn(
@@ -98,7 +229,15 @@ const ConversationRow = React.memo(function ConversationRow({
         />
       )}
 
-      {confirming ? (
+      {editing ? (
+        <RenameField
+          initial={conv.title}
+          saving={renaming}
+          failed={renameFailed}
+          onSubmit={(title) => onSubmitRename(conv.id, title)}
+          onCancel={onCancelRename}
+        />
+      ) : confirming ? (
         <div className="flex min-w-0 flex-1 items-center gap-1 pl-3">
           <span
             role={failed ? "alert" : undefined}
@@ -136,22 +275,37 @@ const ConversationRow = React.memo(function ConversationRow({
       ) : (
         <>
           <Link
+            ref={linkRef}
             to={`/chat/${conv.id}`}
             aria-current={active ? "page" : undefined}
             onClick={(e) => onSelect(conv.id, e)}
             className="flex h-full min-w-0 flex-1 items-center rounded-lg pr-2 pl-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
           >
-            <span className="truncate">{conv.title || "Untitled chat"}</span>
+            <span className="truncate">{label}</span>
           </Link>
           <Button
             type="button"
             variant="ghost"
             size="icon-xs"
-            aria-label={`Delete chat: ${conv.title || "Untitled chat"}`}
-            onClick={() => onAskDelete(conv.id)}
-            // Di layar sentuh gak ada hover, jadi di bawah md selalu keliatan.
+            aria-label={`Rename chat: ${label}`}
+            onClick={() => onAskRename(conv.id)}
             className={cn(
-              "text-muted-foreground hover:text-destructive focus-visible:opacity-100 group-focus-within/row:opacity-100 group-hover/row:opacity-100 max-md:opacity-100",
+              rowActionClass,
+              "hover:text-foreground",
+              active ? "opacity-100" : "opacity-0",
+            )}
+          >
+            <Pencil />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label={`Delete chat: ${label}`}
+            onClick={() => onAskDelete(conv.id)}
+            className={cn(
+              rowActionClass,
+              "hover:text-destructive",
               active ? "opacity-100" : "opacity-0",
             )}
           >
@@ -201,7 +355,17 @@ function ConversationSidebar({
     variables,
   } = useDeleteConversation();
 
+  const {
+    mutate: renameMutate,
+    reset: resetRename,
+    isPending: isRenaming,
+    isError: renameError,
+    variables: renameVars,
+  } = useRenameConversation();
+
+  // Satu baris aja yang boleh dalam mode aksi: rename ATAU konfirmasi delete.
   const [confirmingId, setConfirmingId] = React.useState<number | null>(null);
+  const [editingId, setEditingId] = React.useState<number | null>(null);
 
   const rows = React.useMemo(
     () => buildRows(data?.pages.flatMap((p) => p.items) ?? []),
@@ -268,14 +432,36 @@ function ConversationSidebar({
   const handleAskDelete = React.useCallback(
     (id: number) => {
       resetDelete();
+      resetRename();
+      setEditingId(null);
       setConfirmingId(id);
     },
-    [resetDelete],
+    [resetDelete, resetRename],
   );
   const handleCancelDelete = React.useCallback(() => {
     resetDelete();
     setConfirmingId(null);
   }, [resetDelete]);
+
+  const handleAskRename = React.useCallback(
+    (id: number) => {
+      resetRename();
+      resetDelete();
+      setConfirmingId(null);
+      setEditingId(id);
+    },
+    [resetRename, resetDelete],
+  );
+  const handleCancelRename = React.useCallback(() => {
+    resetRename();
+    setEditingId(null);
+  }, [resetRename]);
+  const handleSubmitRename = React.useCallback(
+    (id: number, title: string) => {
+      renameMutate({ id, title }, { onSuccess: () => setEditingId(null) });
+    },
+    [renameMutate],
+  );
 
   return (
     <nav
@@ -372,10 +558,18 @@ function ConversationSidebar({
                       confirming={confirmingId === row.conv.id}
                       deleting={isPending && variables === row.conv.id}
                       failed={deleteFailed && variables === row.conv.id}
+                      editing={editingId === row.conv.id}
+                      renaming={isRenaming && renameVars?.id === row.conv.id}
+                      renameFailed={
+                        renameError && renameVars?.id === row.conv.id
+                      }
                       onSelect={handleSelect}
                       onAskDelete={handleAskDelete}
                       onCancelDelete={handleCancelDelete}
                       onConfirmDelete={handleConfirmDelete}
+                      onAskRename={handleAskRename}
+                      onSubmitRename={handleSubmitRename}
+                      onCancelRename={handleCancelRename}
                     />
                   )}
                 </div>

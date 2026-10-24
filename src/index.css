@@ -130,3 +130,96 @@
     @apply font-sans;
   }
 }
+
+/*
+ * Syntax highlight (highlight.js). Warnanya lewat CSS variable biar light/dark
+ * tinggal ganti nilai; hue-nya ngikutin palet Spruce (hijau = keyword) dan
+ * dijaga terbatas: hijau, amber, biru, ungu, oranye-merah.
+ */
+:root {
+  --hl-keyword: oklch(0.42 0.1 172);
+  --hl-string: oklch(0.5 0.11 60);
+  --hl-number: oklch(0.5 0.14 30);
+  --hl-title: oklch(0.45 0.12 255);
+  --hl-type: oklch(0.46 0.11 305);
+  --hl-addition-bg: oklch(0.6 0.13 150 / 16%);
+  --hl-deletion-bg: oklch(0.6 0.17 25 / 16%);
+}
+
+.dark {
+  --hl-keyword: oklch(0.78 0.11 172);
+  --hl-string: oklch(0.8 0.1 75);
+  --hl-number: oklch(0.78 0.12 40);
+  --hl-title: oklch(0.78 0.1 250);
+  --hl-type: oklch(0.78 0.1 305);
+  --hl-addition-bg: oklch(0.7 0.13 150 / 20%);
+  --hl-deletion-bg: oklch(0.65 0.17 25 / 22%);
+}
+
+.hljs-comment,
+.hljs-quote {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-name,
+.hljs-doctag {
+  color: var(--hl-keyword);
+}
+
+.hljs-string,
+.hljs-regexp,
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-link {
+  color: var(--hl-string);
+}
+
+.hljs-number,
+.hljs-literal,
+.hljs-symbol,
+.hljs-bullet {
+  color: var(--hl-number);
+}
+
+.hljs-title,
+.hljs-section,
+.hljs-selector-id,
+.hljs-selector-class,
+.hljs-selector-pseudo,
+.hljs-selector-attr {
+  color: var(--hl-title);
+}
+
+.hljs-type,
+.hljs-built_in,
+.hljs-class,
+.hljs-attr,
+.hljs-attribute,
+.hljs-property {
+  color: var(--hl-type);
+}
+
+.hljs-meta,
+.hljs-punctuation,
+.hljs-operator {
+  color: var(--muted-foreground);
+}
+
+.hljs-strong {
+  font-weight: 600;
+}
+
+.hljs-emphasis {
+  font-style: italic;
+}
+
+.hljs-addition {
+  background: var(--hl-addition-bg);
+}
+
+.hljs-deletion {
+  background: var(--hl-deletion-bg);
+}

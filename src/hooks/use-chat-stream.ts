@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   addConversationToTop,
   touchConversation,
+  updateConversationTitle,
 } from "@/lib/conversation-cache";
 import { refreshAccessToken } from "@/lib/api-client";
 import { modelsKey } from "@/lib/models";
@@ -89,6 +90,10 @@ export function useChatStream() {
       const controller = new AbortController();
       abortRef.current = controller;
 
+      // true begitu event `done` datang: balasan udah lengkap. Koneksi bisa
+      // masih kebuka beberapa detik buat nunggu event `title`.
+      let finished = false;
+
       try {
         const title = conversationId ? undefined : deriveTitle(trimmed);
         const payload = {
@@ -171,6 +176,11 @@ export function useChatStream() {
               break;
             }
             case "done": {
+              finished = true;
+              // Balasan udah lengkap: bebasin composer sekarang, jangan
+              // nunggu koneksi ditutup (BE masih bisa nahan stream sebentar
+              // buat ngirim judul AI).
+              setStreaming(false);
               updateMessage(assistantId, (m) => ({
                 ...m,
                 status: m.status === "failed" ? "failed" : "completed",
@@ -185,10 +195,26 @@ export function useChatStream() {
               }
               break;
             }
+            case "title": {
+              // Judul AI, dikirim BE sesudah `done`. Update by id, jadi tetap
+              // bener walau user udah pindah conversation / kirim pesan lagi.
+              const parsed = JSON.parse(evt.data) as {
+                conversation_id: number;
+                title: string;
+              };
+              updateConversationTitle(
+                queryClient,
+                parsed.conversation_id,
+                parsed.title,
+              );
+              break;
+            }
           }
         }
       } catch (err) {
-        if ((err as Error).name !== "AbortError") {
+        // Koneksi putus / data `title` rusak SETELAH `done`: balasannya udah
+        // lengkap dan kesimpen, jadi jangan ditandai gagal.
+        if (!finished && (err as Error).name !== "AbortError") {
           // Bisa jadi model yang dikirim barusan dinonaktifin di server:
           // tandai daftar model stale biar kebaca fresh di request berikutnya.
           if (modelId != null) {
@@ -201,8 +227,13 @@ export function useChatStream() {
           updateMessage(assistantId, (m) => ({ ...m, status: "failed" }));
         }
       } finally {
-        setStreaming(false);
-        abortRef.current = null;
+        // Reset cuma kalau request ini masih yang aktif. Stream lama yang
+        // lagi nunggu `title` bisa kelar SETELAH user kirim pesan berikutnya;
+        // tanpa guard ini dia bakal nge-reset state stream yang baru.
+        if (abortRef.current === controller) {
+          setStreaming(false);
+          abortRef.current = null;
+        }
       }
     },
     [

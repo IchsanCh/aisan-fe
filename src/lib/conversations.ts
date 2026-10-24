@@ -3,7 +3,11 @@ import type { ConversationListPage } from "@/lib/conversation-cache";
 import type {
   GetConversationResponse,
   ListConversationsResponse,
+  UpdateConversationResponse,
 } from "@/types/api";
+
+// Batas kolom `title` di BE (size:255).
+export const CONVERSATION_TITLE_MAX = 255;
 
 export const CONVERSATION_PAGE_SIZE = 20;
 
@@ -44,4 +48,13 @@ export async function fetchConversationList(
 
 export async function deleteConversation(id: number) {
   await apiClient.delete(`/conversations/${id}`);
+}
+
+// Balikin judul versi server (BE nge-trim), bukan versi yang dikirim.
+export async function renameConversation(id: number, title: string) {
+  const { data } = await apiClient.patch<UpdateConversationResponse>(
+    `/conversations/${id}`,
+    { title },
+  );
+  return data.conversation.title;
 }

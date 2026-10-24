@@ -74,3 +74,23 @@ export function removeConversation(qc: QueryClient, id: number) {
       : old,
   );
 }
+
+// Ganti judul di tempat, urutan list gak berubah (BE juga gak nge-bump
+// updated_at pas rename).
+export function updateConversationTitle(
+  qc: QueryClient,
+  id: number,
+  title: string,
+) {
+  qc.setQueryData<ConversationListData>(currentKey(), (old) =>
+    old
+      ? {
+          ...old,
+          pages: old.pages.map((p) => ({
+            ...p,
+            items: p.items.map((c) => (c.id === id ? { ...c, title } : c)),
+          })),
+        }
+      : old,
+  );
+}

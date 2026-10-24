@@ -8,11 +8,13 @@ import { useNavigate } from "react-router-dom";
 import {
   conversationListKey,
   removeConversation,
+  updateConversationTitle,
 } from "@/lib/conversation-cache";
 import {
   CONVERSATION_PAGE_SIZE,
   deleteConversation,
   fetchConversationList,
+  renameConversation,
 } from "@/lib/conversations";
 import { useAuthStore } from "@/store/auth-store";
 import { useChatStore } from "@/store/chat-store";
@@ -51,5 +53,18 @@ export function useDeleteConversation() {
         navigate("/chat", { replace: true });
       }
     },
+  });
+}
+
+export function useRenameConversation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, title }: { id: number; title: string }) =>
+      renameConversation(id, title),
+    // Pessimistic: cache baru diupdate setelah server sukses, pake judul
+    // dari response. Gagal -> cache gak disentuh, jadi gak perlu rollback.
+    onSuccess: (title, { id }) =>
+      updateConversationTitle(queryClient, id, title),
   });
 }
