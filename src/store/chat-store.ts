@@ -34,8 +34,16 @@ function mapServerMessage(m: Message): ChatMessageItem | null {
   };
 }
 
+// Penanda "chat kosong yang lagi dibuka". Ganti tiap reset() (New chat /
+// pindah conversation), jadi file yang diupload di chat kosong bisa
+// dikenali milik chat kosong yang mana -- walau user keburu pindah.
+function newDraftKey() {
+  return `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+}
+
 interface ChatState {
   conversationId: number | null;
+  draftKey: string;
   // Model yang nempel di conversation yang lagi kebuka. null = belum ada
   // (chat baru) -> picker jatuh ke model terakhir dipilih / default BE.
   modelId: number | null;
@@ -67,6 +75,7 @@ interface ChatState {
 
 export const useChatStore = create<ChatState>()((set) => ({
   conversationId: null,
+  draftKey: newDraftKey(),
   modelId: null,
   messages: [],
   hasMoreOlder: false,
@@ -125,6 +134,7 @@ export const useChatStore = create<ChatState>()((set) => ({
   reset: () =>
     set({
       conversationId: null,
+      draftKey: newDraftKey(),
       modelId: null,
       messages: [],
       hasMoreOlder: false,

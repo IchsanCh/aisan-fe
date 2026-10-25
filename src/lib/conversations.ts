@@ -6,6 +6,10 @@ import type {
   UpdateConversationResponse,
 } from "@/types/api";
 
+// Judul placeholder yang dikasih BE kalau conversation dibikin tanpa title
+// (mis. oleh upload dokumen di chat kosong).
+export const DEFAULT_CONVERSATION_TITLE = "New Conversation";
+
 // Batas kolom `title` di BE (size:255).
 export const CONVERSATION_TITLE_MAX = 255;
 

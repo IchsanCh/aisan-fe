@@ -1,9 +1,12 @@
 import * as React from "react";
-import { ArrowUp, Square } from "lucide-react";
+import { ArrowUp, Paperclip, Square } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { useAttachments } from "@/hooks/use-attachments";
 import { useModelSelection } from "@/hooks/use-model-selection";
+import { DOC_ACCEPT_ATTR } from "@/lib/documents";
+import { Attachments } from "@/pages/chat/attachments";
 
 // Dropdown (Base UI Select + floating-ui) lumayan berat dan gak dibutuhin
 // buat render pertama, jadi dipisah jadi chunk sendiri yang di-load paralel
@@ -22,6 +25,8 @@ function Composer({ onSend, onStop, isStreaming }: ComposerProps) {
   const [value, setValue] = React.useState("");
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
   const model = useModelSelection();
+  const attachments = useAttachments(model.selectedId);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const autoGrow = React.useCallback(() => {
     const el = textareaRef.current;
@@ -31,7 +36,8 @@ function Composer({ onSend, onStop, isStreaming }: ComposerProps) {
   }, []);
 
   const handleSubmit = () => {
-    if (isStreaming) return;
+    // Selama dokumen masih diunggah/diproses, belum bisa dicari AI.
+    if (isStreaming || attachments.busy) return;
     const text = value.trim();
     if (!text) return;
     onSend(text, model.selectedId);
@@ -47,6 +53,13 @@ function Composer({ onSend, onStop, isStreaming }: ComposerProps) {
           "focus-within:border-primary",
         )}
       >
+        <Attachments
+          conversationId={attachments.conversationId}
+          docs={attachments.docs}
+          uploads={attachments.uploads}
+          docsError={attachments.docsError}
+        />
+
         <textarea
           ref={textareaRef}
           value={value}
@@ -66,7 +79,32 @@ function Composer({ onSend, onStop, isStreaming }: ComposerProps) {
         />
 
         <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-1">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              hidden
+              tabIndex={-1}
+              accept={DOC_ACCEPT_ATTR}
+              onChange={(e) => {
+                attachments.addFiles(Array.from(e.target.files ?? []));
+                // Reset biar file yang sama bisa dipilih lagi setelahnya.
+                e.target.value = "";
+              }}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label="Attach files"
+              // Nambah file di tengah balasan gak masuk akal.
+              disabled={isStreaming}
+              onClick={() => fileInputRef.current?.click()}
+              className="text-muted-foreground"
+            >
+              <Paperclip className="size-4" />
+            </Button>
             <React.Suspense
               fallback={
                 <span className="px-2 text-xs text-muted-foreground">
@@ -100,7 +138,10 @@ function Composer({ onSend, onStop, isStreaming }: ComposerProps) {
               type="button"
               size="icon"
               onClick={handleSubmit}
-              disabled={!value.trim()}
+              disabled={!value.trim() || attachments.busy}
+              title={
+                attachments.busy ? "Tunggu dokumen selesai diproses" : undefined
+              }
               aria-label="Send"
             >
               <ArrowUp className="size-4" />

@@ -125,3 +125,37 @@ export interface ListModelsResponse {
 export interface UpdateConversationResponse {
   conversation: Conversation;
 }
+
+// GET /documents?conversation_id=ID -- dokumen di knowledge base conversation.
+// `status`: processing | completed | stored (zip: disimpan, gak di-index) | failed.
+export interface ChatDocument {
+  id: number;
+  knowledge_base_id: number;
+  filename?: string;
+  mime_type?: string;
+  extension?: string;
+  file_size?: number;
+  status: string;
+  total_chunks: number;
+  error_message?: string;
+  created_at: string;
+}
+
+export interface ListDocumentsResponse {
+  documents: ChatDocument[] | null;
+}
+
+// POST /documents (multipart: file, conversation_id?, model_id?)
+// 201 -> { document, conversation_id }.
+// 422 -> { error, document | null, conversation_id } -- documentnya ada
+// (status failed) kalau record-nya sempat kebikin sebelum gagal.
+export interface UploadDocumentResponse {
+  document: ChatDocument;
+  conversation_id: number;
+}
+
+export interface UploadDocumentErrorBody {
+  error?: string;
+  document?: ChatDocument | null;
+  conversation_id?: number;
+}
