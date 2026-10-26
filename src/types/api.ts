@@ -159,3 +159,22 @@ export interface UploadDocumentErrorBody {
   document?: ChatDocument | null;
   conversation_id?: number;
 }
+
+// GET/PATCH /settings -- pengaturan global user. Sekarang cuma system prompt.
+export interface UserSettings {
+  system_prompt: string;
+}
+
+export interface SettingsResponse {
+  settings: UserSettings;
+}
+
+// GET /models/available -- id model dari provider (manggil API provider
+// langsung, jadi lambat). POST /models -> 201 { model } | 409 kalau udah ada.
+export interface AvailableModelsResponse {
+  available_models: string[] | null;
+}
+
+export interface CreateModelResponse {
+  model: AIModel;
+}

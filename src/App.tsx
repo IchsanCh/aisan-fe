@@ -16,6 +16,12 @@ const ChatPage = React.lazy(() =>
   import("@/pages/chat/chat-page").then((m) => ({ default: m.ChatPage })),
 );
 
+const SettingsPage = React.lazy(() =>
+  import("@/pages/settings/settings-page").then((m) => ({
+    default: m.SettingsPage,
+  })),
+);
+
 function RouteFallback() {
   return (
     <div className="flex min-h-svh items-center justify-center text-sm text-muted-foreground">
@@ -71,6 +77,14 @@ function App() {
             element={
               <RequireAuth>
                 <ChatPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <RequireAuth>
+                <SettingsPage />
               </RequireAuth>
             }
           />

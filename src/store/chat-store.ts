@@ -20,6 +20,8 @@ export interface ChatMessageItem {
   content: string;
   status: ChatMessageStatus;
   toolCalls?: ToolCallItem[];
+  // Alasan gagal (cuma ada kalau status "failed"): pesan dari BE/provider.
+  error?: string;
   createdAt: string;
 }
 
@@ -30,6 +32,7 @@ function mapServerMessage(m: Message): ChatMessageItem | null {
     role: m.role,
     content: m.content,
     status: m.status === "failed" ? "failed" : "completed",
+    error: m.status === "failed" ? (m.error_message ?? undefined) : undefined,
     createdAt: m.created_at,
   };
 }

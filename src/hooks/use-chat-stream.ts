@@ -117,7 +117,16 @@ export function useChatStream() {
         }
 
         if (!res.ok || !res.body) {
-          throw new Error(`Chat request gagal (${res.status})`);
+          // BE ngebales { error } buat penolakan sebelum stream mulai
+          // (model gak ketemu / nonaktif, dll): tampilin alasannya.
+          let detail = `Chat request gagal (${res.status})`;
+          try {
+            const body = (await res.json()) as { error?: string };
+            if (body?.error) detail = body.error;
+          } catch {
+            // body bukan JSON -- pakai pesan umum
+          }
+          throw new Error(detail);
         }
 
         for await (const evt of parseSSEStream(res)) {
@@ -172,7 +181,11 @@ export function useChatStream() {
             case "error": {
               const parsed = JSON.parse(evt.data) as { message: string };
               setError(parsed.message);
-              updateMessage(assistantId, (m) => ({ ...m, status: "failed" }));
+              updateMessage(assistantId, (m) => ({
+                ...m,
+                status: "failed",
+                error: parsed.message,
+              }));
               break;
             }
             case "done": {
@@ -220,11 +233,15 @@ export function useChatStream() {
           if (modelId != null) {
             void queryClient.invalidateQueries({ queryKey: modelsKey });
           }
-          setError(
+          const reason =
             (err as Error).message ||
-              "Sesi kamu abis atau gagal connect, coba login lagi.",
-          );
-          updateMessage(assistantId, (m) => ({ ...m, status: "failed" }));
+            "Sesi kamu abis atau gagal connect, coba login lagi.";
+          setError(reason);
+          updateMessage(assistantId, (m) => ({
+            ...m,
+            status: "failed",
+            error: reason,
+          }));
         }
       } finally {
         // Reset cuma kalau request ini masih yang aktif. Stream lama yang

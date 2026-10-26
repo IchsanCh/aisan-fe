@@ -129,9 +129,21 @@ function MessageBubbleBase({ message }: { message: ChatMessageItem }) {
         </div>
 
         {message.status === "failed" && (
-          <div className="flex items-center gap-1.5 text-xs text-destructive">
-            <AlertCircle className="size-3.5" aria-hidden="true" />
-            Gagal dapet balasan.
+          <div className="flex flex-col gap-0.5 text-xs">
+            <div className="flex items-center gap-1.5 text-destructive">
+              <AlertCircle className="size-3.5" aria-hidden="true" />
+              Gagal dapet balasan.
+            </div>
+            {message.error && (
+              // Alasan asli dari BE/provider (mis. "Provider menolak request
+              // (HTTP 400): ..."), biar penyebabnya kelihatan, bukan ditebak.
+              <p
+                title={message.error}
+                className="line-clamp-4 pl-5 break-words text-muted-foreground"
+              >
+                {message.error}
+              </p>
+            )}
           </div>
         )}
       </div>

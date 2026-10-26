@@ -1,9 +1,9 @@
 import * as React from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { LogOut, PanelLeft, PanelLeftOpen } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { LogOut, PanelLeft, PanelLeftOpen, Settings } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   ConversationSidebar,
   SidebarDrawer,
@@ -154,6 +154,13 @@ function ChatPage() {
           </div>
           <div className="flex items-center gap-1">
             <ThemeToggle />
+            <Link
+              to="/settings"
+              aria-label="Settings"
+              className={buttonVariants({ variant: "ghost", size: "icon" })}
+            >
+              <Settings className="size-4" />
+            </Link>
             <Button
               type="button"
               variant="ghost"
