@@ -1,9 +1,17 @@
 import * as React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { Loader2, PanelLeftClose, Pencil, Plus, Trash2, X } from "lucide-react";
+import {
+  Loader2,
+  PanelLeftClose,
+  Pencil,
+  Plus,
+  Settings,
+  Trash2,
+  X,
+} from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   useConversationList,
   useDeleteConversation,
@@ -586,6 +594,20 @@ function ConversationSidebar({
             />
           </div>
         )}
+      </div>
+
+      <div className="border-t border-sidebar-border p-2">
+        <Link
+          to="/settings"
+          onClick={() => stop()}
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "lg" }),
+            "w-full justify-start text-sidebar-foreground",
+          )}
+        >
+          <Settings />
+          Settings
+        </Link>
       </div>
     </nav>
   );

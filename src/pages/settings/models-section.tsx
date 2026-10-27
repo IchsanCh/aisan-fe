@@ -272,9 +272,6 @@ function ModelsSection() {
           )}
         </>
       )}
-      {/* TODO(settings): pilihan "model khusus judul" (auto-title) bisa ditaruh
-          di sini nanti -- BE-nya masih pakai model chat itu sendiri (lihat TODO
-          di service/chat_title.go). */}
     </section>
   );
 }

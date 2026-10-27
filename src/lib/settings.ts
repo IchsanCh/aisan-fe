@@ -27,3 +27,14 @@ export async function updateSystemPrompt(
   });
   return data.settings;
 }
+
+// null = hapus pilihan (judul pakai model chat). Cuma ngirim title_model_id,
+// jadi system prompt gak ikut kereset.
+export async function updateTitleModel(
+  titleModelId: number | null,
+): Promise<UserSettings> {
+  const { data } = await apiClient.patch<SettingsResponse>("/settings", {
+    title_model_id: titleModelId,
+  });
+  return data.settings;
+}

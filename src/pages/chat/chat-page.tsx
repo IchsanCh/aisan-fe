@@ -1,9 +1,10 @@
 import * as React from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { LogOut, PanelLeft, PanelLeftOpen, Settings } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
+import { LogOut, PanelLeft, PanelLeftOpen } from "lucide-react";
 
+import { NotificationBell } from "@/components/notification-bell";
 import { ThemeToggle } from "@/components/theme-toggle";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import {
   ConversationSidebar,
   SidebarDrawer,
@@ -153,14 +154,8 @@ function ChatPage() {
             </div>
           </div>
           <div className="flex items-center gap-1">
+            <NotificationBell />
             <ThemeToggle />
-            <Link
-              to="/settings"
-              aria-label="Settings"
-              className={buttonVariants({ variant: "ghost", size: "icon" })}
-            >
-              <Settings className="size-4" />
-            </Link>
             <Button
               type="button"
               variant="ghost"

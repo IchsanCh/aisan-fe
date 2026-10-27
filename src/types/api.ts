@@ -163,6 +163,8 @@ export interface UploadDocumentErrorBody {
 // GET/PATCH /settings -- pengaturan global user. Sekarang cuma system prompt.
 export interface UserSettings {
   system_prompt: string;
+  // Model khusus judul auto-title. null = pakai model chat itu sendiri.
+  title_model_id: number | null;
 }
 
 export interface SettingsResponse {
@@ -177,4 +179,41 @@ export interface AvailableModelsResponse {
 
 export interface CreateModelResponse {
   model: AIModel;
+}
+
+// GET /notifications -- `unread_count` itu TOTAL belum dibaca di server,
+// bukan jumlah dari `notifications` (yang dibatasi limit).
+export interface AppNotification {
+  id: number;
+  reminder_id?: number;
+  type: string;
+  title?: string;
+  content: string;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface ListNotificationsResponse {
+  notifications: AppNotification[];
+  unread_count: number;
+}
+
+// GET /memories -- memory jangka panjang yang disimpan AI. `folder_id` /
+// `folder_name` kosong = global (berlaku di semua chat).
+export interface UserMemory {
+  id: number;
+  content: string;
+  folder_id?: number;
+  folder_name?: string;
+  source?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ListMemoriesResponse {
+  memories: UserMemory[];
+}
+
+export interface UpdateMemoryResponse {
+  memory: UserMemory;
 }

@@ -1,6 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { fetchSettings, settingsKey, updateSystemPrompt } from "@/lib/settings";
+import {
+  fetchSettings,
+  settingsKey,
+  updateSystemPrompt,
+  updateTitleModel,
+} from "@/lib/settings";
 import { useAuthStore } from "@/store/auth-store";
 import type { UserSettings } from "@/types/api";
 
@@ -23,6 +28,17 @@ export function useUpdateSystemPrompt() {
   return useMutation({
     mutationFn: (systemPrompt: string) => updateSystemPrompt(systemPrompt),
     // Pake nilai dari response (BE nge-trim), bukan yang dikirim.
+    onSuccess: (settings) =>
+      queryClient.setQueryData<UserSettings>(settingsKey(userId), settings),
+  });
+}
+
+export function useUpdateTitleModel() {
+  const queryClient = useQueryClient();
+  const userId = useAuthStore((s) => s.user?.id);
+
+  return useMutation({
+    mutationFn: (titleModelId: number | null) => updateTitleModel(titleModelId),
     onSuccess: (settings) =>
       queryClient.setQueryData<UserSettings>(settingsKey(userId), settings),
   });

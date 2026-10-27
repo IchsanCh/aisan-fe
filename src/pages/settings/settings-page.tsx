@@ -3,7 +3,9 @@ import { ArrowLeft } from "lucide-react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
+import { MemorySection } from "@/pages/settings/memory-section";
 import { ModelsSection } from "@/pages/settings/models-section";
+import { TitleModelSection } from "@/pages/settings/title-model-section";
 import { SystemPromptSection } from "@/pages/settings/system-prompt-section";
 
 function SettingsPage() {
@@ -27,6 +29,12 @@ function SettingsPage() {
         <SystemPromptSection />
         <div className="border-t border-border pt-10">
           <ModelsSection />
+        </div>
+        <div className="border-t border-border pt-10">
+          <TitleModelSection />
+        </div>
+        <div className="border-t border-border pt-10">
+          <MemorySection />
         </div>
       </main>
     </div>
